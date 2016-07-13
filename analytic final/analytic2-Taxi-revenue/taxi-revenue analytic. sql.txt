@@ -1,0 +1,41 @@
+create external table if not exists rev_taxi (
+pickup_date STRING, 
+pickup_time STRING, 
+dropoff_date STRING,
+dropoff_time STRING, 
+pickup_long FLOAT, 
+pickup_lat FLOAT, 
+dropoff_long FLOAT, 
+drop_lat FLOAT, 
+fare FLOAT,
+weather_date STRING,
+description STRING,
+value FLOAT)
+row format delimited 
+fields terminated by ',';
+
+
+create external table new_rev(
+pickup_date STRING,
+fare FLOAT,
+num_rides FLOAT,
+description STRING);
+
+/* after creating the tables in hive, exit from hive and use the following command to put the data which is in s3 bucket on to HDFS of the cluster*/
+
+/* hadoop distcp s3://projdata230293/nov2014/2014-11 hdfs://172.31.36.34:9000/user/hive/warehouse/rev_taxi , 
+here 172.31.36.34 is the public DNS of cluster */
+
+/* then again go to hive, use the following query to take the data from HDFS on to the table */
+
+LOAD DATA INPATH 'hdfs://172.31.36.34:9000/user/hive/warehouse/rev_taxi' OVERWRITE INTO TABLE rev_taxi;
+
+
+INSERT OVERWRITE TABLE new_rev
+select pickup_date, sum(fare), count(fare), description 
+from rev_taxi 
+where description = 'SNWD'
+group by pickup_date, description;
+
+/* the following query is used to store the analytic table into s3 */
+INSERT OVERWRITE DIRECTORY 's3://projdata230293/new_rev/'  select * from new_rev;
